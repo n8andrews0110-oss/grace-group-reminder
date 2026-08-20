@@ -1,0 +1,44 @@
+name: Daily Bible Reading Reminder
+
+on:
+  schedule:
+    # Runs at 10:00 and 11:00 UTC -- the two times that can be 6:00 AM
+    # Eastern (10:00 UTC during daylight saving, 11:00 UTC during standard
+    # time). send_reminder.py checks the local clock and only actually
+    # sends during SEND_HOUR, so exactly one of these two runs sends each
+    # day and the reminder keeps arriving at 6 AM local year-round with
+    # nothing to update by hand.
+    #
+    # If you change SEND_HOUR or TIMEZONE below, update these two UTC
+    # hours to match -- or just use '0 * * * *' to run hourly, which works
+    # for any timezone/hour at the cost of more Actions minutes.
+    - cron: '0 10,11 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Send immediately regardless of the scheduled hour (for testing)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install -r requirements.txt
+
+      - run: python send_reminder.py
+        env:
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_FROM_NUMBER: ${{ secrets.TWILIO_FROM_NUMBER }}
+          GROUP_PHONE_NUMBERS: ${{ secrets.GROUP_PHONE_NUMBERS }}
+          TIMEZONE: 'America/New_York'
+          SEND_HOUR: '6'
+          FORCE_SEND: ${{ inputs.force }}
